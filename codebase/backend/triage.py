@@ -9,15 +9,6 @@ from chat_log import log_handoff
 from longchau_search import search_products
 from safety_gate import is_high_risk, is_injection
 
-PHARMACIST_NAMES = ["Dược sĩ Lan", "Dược sĩ Minh", "Dược sĩ Hương"]
-_pharmacist_index = 0
-
-
-def _next_pharmacist() -> str:
-    global _pharmacist_index
-    name = PHARMACIST_NAMES[_pharmacist_index % len(PHARMACIST_NAMES)]
-    _pharmacist_index += 1
-    return name
 
 
 
@@ -52,11 +43,10 @@ async def triage(message: str, history: list[dict]) -> dict:
         except Exception:
             handoff_summary = f"Khách hỏi: {message[:200]}. Cần tư vấn chuyên sâu."
 
-        pharmacist = _next_pharmacist()
-        log_handoff(message, history, handoff_summary, pharmacist, safety_triggered=True)
+        log_handoff(message, history, handoff_summary, pharmacist="", safety_triggered=True)
         return {
             "route": "advisory_handoff",
-            "reply": f"⚠️ Câu hỏi của bạn liên quan đến tình trạng sức khoẻ cụ thể và cần được tư vấn bởi chuyên gia.\n\nĐang chuyển cho **{pharmacist}** hỗ trợ bạn ngay.",
+            "reply": "⚠️ Câu hỏi của bạn liên quan đến tình trạng sức khoẻ cụ thể và cần được tư vấn bởi chuyên gia.\n\nĐang chuyển cho **dược sĩ** hỗ trợ bạn ngay.",
             "handoff_summary": handoff_summary,
             "safety_gate_triggered": True,
             "model": model_name,
@@ -149,11 +139,10 @@ async def triage(message: str, history: list[dict]) -> dict:
     except Exception:
         handoff_summary = f"Khách hỏi: {message[:200]}. Cần tư vấn chuyên sâu."
 
-    pharmacist = _next_pharmacist()
-    log_handoff(message, history, handoff_summary, pharmacist, safety_triggered=False)
+    log_handoff(message, history, handoff_summary, pharmacist="", safety_triggered=False)
     return {
         "route": "advisory_handoff",
-        "reply": f"Cảm ơn bạn đã cung cấp thông tin. Đang chuyển cho **{pharmacist}** tư vấn chi tiết cho bạn.",
+        "reply": "Cảm ơn bạn đã cung cấp thông tin. Đang chuyển cho **dược sĩ** tư vấn chi tiết cho bạn.",
         "handoff_summary": handoff_summary,
         "safety_gate_triggered": False,
         "model": model_name,

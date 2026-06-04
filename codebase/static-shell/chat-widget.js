@@ -245,7 +245,6 @@
     const avatar = `<div class="lc-msg-avatar"><img src="./assets/avatar.png" alt="AI" /></div>`;
 
     if (route === 'advisory_handoff') {
-      const pharmacist = data.pharmacist_name || 'Dược sĩ';
       const summary = data.handoff_summary || data.summary || '';
       wrapper.innerHTML = `
         ${avatar}
@@ -254,7 +253,6 @@
           <div class="lc-handoff-card">
             <div class="lc-handoff-title">🔄 Chuyển tư vấn chuyên sâu</div>
             <div class="lc-safety-badge">⚠️ Câu hỏi cần dược sĩ</div>
-            <div class="lc-handoff-pharmacist">Đang kết nối: <strong>${escHtml(pharmacist)}</strong></div>
             ${summary ? `<div class="lc-handoff-summary">📋 <strong>Tóm tắt:</strong> ${escHtml(summary)}</div>` : ''}
           </div>
           <div class="lc-ts">${formatTime(new Date())}</div>
