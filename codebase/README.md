@@ -1,13 +1,81 @@
-# Codebase
+# Codebase — Long Châu AI Triage Middleware
 
-Đây là nơi nhóm nộp toàn bộ phần code của prototype. Mục tiêu là để giảng viên và các nhóm khác nhìn được sản phẩm chạy như thế nào, và mỗi thành viên đã đóng góp ra sao.
+## Cách chạy prototype
 
-## Nhóm cần làm
+### Cách 1: Docker Compose (khuyến nghị)
 
-- Đưa mã nguồn của prototype vào folder này. Nếu prototype được deploy hoặc host ở nơi khác, hãy để lại đường link kèm hướng dẫn truy cập.
-- Trong file `README.md` của nhóm, ghi rõ ba điều: cách chạy prototype (các bước cài đặt và biến môi trường nếu cần), những công cụ và API đã dùng (model AI, framework, công cụ dựng giao diện…), và phần phân công ai làm gì.
-- Mỗi thành viên nên có ít nhất một commit thực chất trong repo — đây là căn cứ để ghi nhận đóng góp của từng người.
+```bash
+cd codebase
+cp .env.example .env
+# Điền OPENROUTER_API_KEY vào .env
+docker compose up --build
+```
 
-## Lưu ý
+- Chat UI: http://localhost:8501
+- API: http://localhost:8000
+- Health check: http://localhost:8000/health
 
-Đừng commit những thông tin nhạy cảm như API key hay file `.env`. Nếu prototype cần các biến môi trường, hãy dùng một file `.env.example` để mô tả các biến đó thay vì để lộ giá trị thật.
+### Cách 2: Chạy native (không cần Docker)
+
+**Backend:**
+```bash
+cd codebase/backend
+pip install -r requirements.txt
+cp ../.env.example ../.env  # điền API key
+BACKEND_URL=http://localhost:8000 uvicorn main:app --reload
+```
+
+**Frontend (terminal khác):**
+```bash
+cd codebase/frontend
+pip install -r requirements.txt
+BACKEND_URL=http://localhost:8000 streamlit run app.py
+```
+
+## Biến môi trường
+
+| Biến | Giá trị mặc định | Mô tả |
+|---|---|---|
+| `OPENROUTER_API_KEY` | *(bắt buộc)* | API key từ openrouter.ai |
+| `OPENROUTER_MODEL` | `openai/gpt-4o-mini` | Model dùng qua OpenRouter |
+| `BACKEND_URL` | `http://backend:8000` | URL backend (override khi chạy native) |
+
+## Công cụ và API đã dùng
+
+- **AI:** OpenRouter → `openai/gpt-4o-mini` (3 LLM calls: classifier, answer/gather, handoff summary)
+- **Backend:** FastAPI + uvicorn (Python 3.12)
+- **Frontend:** Streamlit
+- **Infrastructure:** Docker Compose
+- **HTTP client:** httpx (async)
+
+## Cấu trúc code
+
+```
+codebase/
+├── backend/
+│   ├── main.py              # FastAPI app + /health + /chat endpoint
+│   ├── triage.py            # Orchestration: safety_gate → classify → answer/gather/handoff
+│   ├── openrouter_client.py # Thin httpx wrapper cho OpenRouter API
+│   ├── prompts.py           # System prompts (classifier, answer, gather, handoff)
+│   ├── safety_gate.py       # Keyword list + is_high_risk() — chạy trước classifier
+│   └── requirements.txt
+├── frontend/
+│   ├── app.py               # Streamlit chat UI
+│   └── requirements.txt
+├── docker-compose.yml
+├── .env.example
+├── .gitignore
+├── sample-questions.md      # 15 test cases labeled factual/advisory
+├── demo-script.md           # Kịch bản demo 4–5 phút
+└── triage-test-results.md   # Kết quả test từng case
+```
+
+## Phân công
+
+| Thành viên | Phụ trách chính |
+|---|---|
+| Tiền Anh Kiệt | Scaffold, Docker Compose, demo script, README, UI polish |
+| Vũ Đình Phượng | FastAPI backend, Streamlit frontend, Phase 2+3 |
+| Nguyễn Văn Phúc | Prompts (classifier, answer, handoff summary), SPEC |
+| Nguyễn Hoàng Dương | Sample questions, evidence, test cases |
+| Nguyễn Quang Hoà | Test failure paths, triage-test-results.md, dry run |
