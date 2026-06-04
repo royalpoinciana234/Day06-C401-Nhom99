@@ -34,26 +34,59 @@
 
 ---
 
-## 4. Augment hay Automate
+## 4. Tăng năng lực hay tự động hóa
 
-**Chọn: Conditional Automation.**
+### Lựa chọn
 
-AI tự hành động trong scope hẹp (factual) và fail-safe sang human khi bất định. Cụ thể:
-- **Factual → AI tự trả lời** (automate): thành phần thuốc, công dụng chung, cách bảo quản — không có rủi ro cá nhân hoá.
-- **Advisory → AI chỉ gather + tóm tắt, dược sĩ quyết định** (augment): tương tác thuốc, liều theo bệnh lý, tư vấn cá nhân — sai sót có hậu quả sức khoẻ thật, không thể hoàn tác.
+**Conditional Automation (kết hợp Automation và Augmentation)**
 
-**Tại sao mức này:** Dược sĩ Long Châu đang có sẵn — không cần thay. Cần triage tốt hơn và chuẩn bị context trước. Automate hoàn toàn advisory là không phù hợp với quy định dược và rủi ro pháp lý.
+### AI và con người tham gia như thế nào
+
+| Thành phần | Vai trò                                                                                  |
+| ---------- | ---------------------------------------------------------------------------------------- |
+| AI         | Phân loại câu hỏi, trả lời các câu hỏi factual, thu thập context và tạo handoff summary. |
+| Dược sĩ    | Đánh giá và trả lời các câu hỏi advisory liên quan đến tình trạng sức khỏe cá nhân.      |
+| Người dùng | Có thể yêu cầu chuyển sang dược sĩ bất kỳ lúc nào.                                       |
+
+### Mức độ tự động hóa
+
+Sản phẩm kết hợp cả hai cách tiếp cận:
+
+#### Automation
+
+AI tự hành động trong phạm vi đã định:
+
+* Phân loại câu hỏi thành factual hoặc advisory.
+* Trả lời các câu hỏi factual như công dụng, thành phần, cách bảo quản thuốc.
+* Thu thập thông tin ban đầu từ người dùng.
+
+#### Augmentation
+
+AI hỗ trợ con người thay vì thay thế:
+
+* Tóm tắt bối cảnh cuộc hội thoại.
+* Chuẩn bị thông tin cho dược sĩ trước khi tư vấn.
+* Giúp dược sĩ giảm thời gian hỏi lại thông tin đã có.
+
+### Lý do lựa chọn
+
+Nhóm chọn **Conditional Automation** vì không phải mọi câu hỏi đều có cùng mức độ rủi ro.
+
+* Với các câu hỏi factual, AI có thể tự động xử lý an toàn và giúp người dùng nhận phản hồi gần như tức thì.
+* Với các câu hỏi advisory như tương tác thuốc, liều dùng theo bệnh lý hoặc tư vấn cho đối tượng đặc biệt, AI chỉ đóng vai trò hỗ trợ thu thập và tổng hợp thông tin; quyết định cuối cùng vẫn thuộc về dược sĩ.
+
+Long Châu đã có đội ngũ dược sĩ chuyên môn. Mục tiêu của sản phẩm không phải thay thế dược sĩ mà là phân luồng hiệu quả hơn, giảm tải các câu hỏi đơn giản và chuẩn bị sẵn context cho các trường hợp cần tư vấn chuyên sâu. Vì vậy, sản phẩm kết hợp **Automation ở các tác vụ rủi ro thấp** và **Augmentation ở các tác vụ cần chuyên môn con người**, trong một mô hình **Conditional Automation**.
 
 ---
 
 ## 5. Bốn đường đi của trải nghiệm
 
-| Đường đi | Input mẫu | Prototype xử lý |
-|---|---|---|
-| **Happy (factual)** | "Paracetamol 500mg tác dụng gì?" | AI classify factual → trả lời trong <3s kèm disclaimer nhẹ |
-| **Low-confidence (gather)** | "Thuốc này uống được không?" | AI classify advisory + needs_context=true → hỏi "Bạn đang hỏi về thuốc nào? Bạn có bệnh nền hay đang dùng thuốc khác không?" |
-| **Failure (force-route)** | "Tôi tiểu đường type 2, dùng Ibuprofen được không?" | Keyword gate bắt "tiểu đường" → force advisory_handoff, KHÔNG qua classifier, KHÔNG auto-answer; UI hiện badge ⚠️ + handoff card |
-| **Correction** | Dược sĩ thấy summary sai | Dược sĩ sửa và trả lời trực tiếp; user thấy "Dược sĩ Lan đang hỗ trợ bạn" (mock trong prototype) |
+| Đường đi | Câu hỏi | Hệ thống xử lý |
+|-----------|------------------------|----------------|
+| **Đường thuận (Happy Path)** | *"Paracetamol 500mg có tác dụng gì?"* | AI phân loại là **Factual**, trả lời trực tiếp trong < 3 giây kèm disclaimer nhẹ. |
+| **Khi AI không chắc (Low Confidence)** | *"Thuốc này uống được không?"* | AI không đủ thông tin để phân loại hoặc tư vấn an toàn. Hệ thống chuyển sang chế độ thu thập thêm ngữ cảnh và hỏi rõ hơn, ví dụ: *"Bạn đang hỏi về thuốc nào?"*, *"Bạn có đang dùng thuốc khác không?"*. |
+| **Khi AI phát hiện rủi ro (Failure Path)** | *"Tôi bị tiểu đường type 2 có dùng được Ibuprofen không?"* | Keyword/rule gate phát hiện đây là câu hỏi **Advisory** có yếu tố bệnh lý. AI không tự trả lời, không đi qua luồng factual, mà tạo handoff summary và chuyển cho dược sĩ/chuyên gia. UI hiển thị trạng thái cảnh báo và handoff. |
+| **Khi người dùng sửa (Correction Path)** | AI hiểu sai hoặc summary chưa chính xác. | Dược sĩ/chuyên gia chỉnh sửa summary và trả lời trực tiếp cho người dùng. Hệ thống lưu correction để cải thiện prompt, rule và test cases trong tương lai. |
 
 ---
 
@@ -95,8 +128,8 @@ AI tự hành động trong scope hẹp (factual) và fail-safe sang human khi b
 
 | Thành viên | Mã HV | Phụ trách |
 |---|---|---|
-| Tiền Anh Kiệt | HV001 | Scaffold repo, Docker Compose, demo script, README, UI polish |
-| Vũ Đình Phượng | HV002 | FastAPI backend, Streamlit frontend, Phase 2+3 integration |
-| Nguyễn Văn Phúc | HV003 | Prompts (classifier, answer, handoff), SPEC hoàn thiện |
-| Nguyễn Hoàng Dương | HV004 | Sample questions, evidence, test cases |
-| Nguyễn Quang Hoà | HV005 | Test failure paths, triage-test-results.md, dry run |
+| Tiền Anh Kiệt | 2A202600961 | Scaffold repo, Docker Compose, demo script, README, UI polish |
+| Vũ Đình Phượng | 2A202600634 | FastAPI backend, Streamlit frontend, Phase 2+3 integration |
+| Nguyễn Văn Phúc | 2A202600539 | Prompts (classifier, answer, handoff), SPEC hoàn thiện |
+| Nguyễn Hoàng Dương | 2A202600849 | Sample questions, evidence, test cases, Làm slide thuyết trình |
+| Nguyễn Quang Hoà | 2A202600986 | Test failure paths, triage-test-results.md, dry run |
