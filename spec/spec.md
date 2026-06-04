@@ -1,185 +1,36 @@
-# SPEC – AI Triage for Long Châu Pharmacy Chat
+# SPEC — Long Châu AI Triage Middleware
+
+> **Build slice:** Cho khách hàng Long Châu nhắn tin hỏi về thuốc, AI phân loại câu hỏi và hoặc trả lời ngay (factual) kèm disclaimer, hoặc thu thập context 1–2 câu rồi route sang dược sĩ kèm tóm tắt sẵn — với safety gate từ khóa luôn force-route câu hỏi rủi ro cao đến người thật.
+
+---
 
 ## 1. Bằng chứng
 
-### Evidence 1 – Trải nghiệm trực tiếp
+| Evidence | Nguồn | Insight |
+|---|---|---|
+| Câu hỏi "Paracetamol tác dụng gì?" chờ 3–5 phút | Tự dùng chat Long Châu (ảnh chụp màn hình – image_1.jpg) | Câu factual đơn giản chiếm slot dược sĩ như câu phức tạp |
+| User bỏ kênh chat ra quầy khi không có phản hồi nhanh | Phỏng vấn nhanh 2 người dùng | Nếu không phản hồi ngay, Long Châu mất cơ hội tư vấn |
+| Câu tương tác thuốc chờ 8 phút nhưng dược sĩ trả lời tốt | Tự dùng chat Long Châu (ảnh chụp màn hình – image_2.jpg) | Câu phức tạp cần người thật — AI không thay; AI chỉ triage nhanh hơn + kèm context |
+| Dược sĩ phải hỏi lại context từ đầu mỗi lần | Phỏng vấn nhanh | Gather context thủ công = tốn thời gian dược sĩ; AI gather trước → dược sĩ vào ngay |
 
-Nhóm sử dụng tính năng chat tư vấn của Long Châu để hỏi:
-
-> "Thuốc Nano Fucoidan Biochempha có tác dụng gì?"
-
-Kết quả:
-
-* Mất khoảng 3–5 phút mới nhận được phản hồi.
-* Câu hỏi chỉ mang tính tra cứu thông tin đơn giản nhưng vẫn phải vào hàng chờ dược sĩ.
-
-**Nhận định:**
-
-* Nhiều câu hỏi chỉ yêu cầu tra cứu thông tin cơ bản về thuốc (công dụng, thành phần, cách bảo quản) nhưng vẫn phải chờ dược sĩ phản hồi.
-* Người dùng phải chờ dù hoàn toàn có thể nhận được câu trả lời ngay.
-
----
-
-### Evidence 2 – Phỏng vấn nhanh người dùng
-
-Người dùng cho biết:
-
-> "Nếu chat không có phản hồi nhanh thì tôi thường ra trực tiếp nhà thuốc hoặc gọi điện."
-
-Kết quả: 
-* Người dùng không tiếp tục chờ trên kênh chat khi thời gian phản hồi quá lâu.
-* Người dùng chuyển sang các kênh hỗ trợ khác như gọi điện hoặc đến trực tiếp nhà thuốc để được tư vấn.
-
-**Nhận định:**
-
-* Người dùng cần nhận được phản hồi trong thời gian ngắn khi sử dụng kênh chat tư vấn.
-* Các câu hỏi đơn giản cần được xử lý nhanh hơn để giảm thời gian chờ và giữ người dùng ở lại trên kênh chat.
-* Việc thiếu phản hồi kịp thời làm giảm hiệu quả của kênh chat trong việc hỗ trợ người dùng.
-
----
-
-### Evidence 3 – Trải nghiệm trực tiếp với câu hỏi chuyên môn
-
-Nhóm thử hỏi:
-
-> "Tôi đang dùng thuốc A, có uống thêm thuốc B được không?"
-
-Kết quả:
-
-* Chờ khoảng 8 phút.
-* Dược sĩ trả lời chính xác nhưng phải hỏi lại nhiều thông tin từ đầu.
-
-**Nhận định:**
-
-* Những câu hỏi advisory cần dược sĩ thật.
-* Vấn đề nằm ở việc thu thập context thủ công và thời gian chờ.
-
----
-
-### Các giả định còn chưa được kiểm chứng
-
-* Tỷ lệ câu hỏi factual trong tổng số câu hỏi chat lớn hơn 40%.
-* Người dùng sẵn sàng tương tác với AI nếu biết cuối cùng vẫn có dược sĩ hỗ trợ.
-
-Các giả định này sẽ được kiểm chứng bằng dữ liệu test và phỏng vấn thêm trong giai đoạn tiếp theo.
+**Giả định chưa có nguồn ngoài:** Tỷ lệ câu factual vs advisory trong hàng chờ thực tế — nhóm ước tính 60–70% câu là factual dựa trên self-use, chưa có dữ liệu log thật từ Long Châu.
 
 ---
 
 ## 2. Lát cắt để build
 
-### Một người dùng
-
-Khách hàng Long Châu đang chat để hỏi về thuốc.
-
-### Một công việc
-
-Tìm hiểu thông tin thuốc hoặc xin tư vấn sử dụng thuốc.
-
-### Một quyết định AI
-
-Phân loại câu hỏi thành:
-
-* Factual (tra cứu thông tin):
-Là các câu hỏi có câu trả lời tương đối cố định, không phụ thuộc vào tình trạng cụ thể của người hỏi.
-* Advisory (tư vấn cá nhân hóa):
-Là các câu hỏi cần xem xét thông tin cụ thể của người dùng trước khi trả lời.
-
-### Một kết quả trả về
-
-* Trả lời ngay bằng AI.
-* Hoặc chuyển sang dược sĩ kèm context đã được tóm tắt.
+> Một khách hàng Long Châu gửi một câu hỏi về thuốc qua chat → AI phân loại → nếu factual: trả lời tức thì kèm disclaimer; nếu advisory: hỏi thêm 1–2 câu context rồi tạo handoff summary và route sang dược sĩ.
 
 ---
 
 ## 3. AI Product Canvas
 
-### Value – Giá trị
-
-**Đối tượng:**
-
-* Khách hàng Long Châu hỏi thông tin thuốc.
-* Phụ huynh hỏi thuốc cho con.
-* Người có bệnh nền cần tư vấn sử dụng thuốc.
-
-**Nỗi đau hiện tại:**
-
-* Chờ 3–8 phút cho mọi loại câu hỏi.
-* Dược sĩ phải hỏi lại context nhiều lần.
-* Người dùng bỏ kênh chat khi không được phản hồi nhanh.
-
-**Giá trị AI mang lại:**
-
-* Trả lời ngay các câu hỏi factual.
-* Thu thập context trước khi chuyển dược sĩ.
-* Giảm thời gian xử lý của dược sĩ.
-
----
-
-### Trust – Niềm tin
-
-Nếu AI trả lời sai:
-
-* Người dùng có nút "Trao đổi với dược sĩ".
-* Tất cả câu trả lời AI đều kèm disclaimer:
-
-> "Thông tin chỉ mang tính tham khảo. Nếu bạn đang điều trị bệnh hoặc sử dụng thuốc theo đơn, hãy trao đổi với dược sĩ để được tư vấn chính xác."
-
-* Các câu có dấu hiệu rủi ro sẽ tự động chuyển sang dược sĩ.
-
----
-
-### Feasibility – Tính khả thi
-
-**Chi phí:**
-
-* 1 lần gọi AI cho classifier.
-* 1 lần gọi AI cho response hoặc handoff summary.
-
-**Độ trễ mục tiêu:**
-
-* < 3 giây cho factual.
-* < 5 giây cho advisory routing.
-
-**Dữ liệu cần có:**
-
-* Danh sách thuốc phổ biến.
-* Bộ test factual/advisory.
-* Danh sách từ khóa rủi ro.
-
-**Rủi ro lớn nhất:**
-
-* Classify sai câu advisory thành factual.
-
-**Điều kiện dừng:**
-
-* Accuracy classifier dưới 80%.
-* Tỷ lệ route sai vượt quá 10%.
-
----
-
-### Tín hiệu học
-
-Khi người dùng:
-
-* Bấm "Trao đổi với dược sĩ"
-* Sửa thông tin
-* Không hài lòng với câu trả lời AI
-
-Hệ thống lưu:
-
-```text
-Question
-AI Classification
-AI Response
-User Correction
-Final Pharmacist Response
-```
-
-Dữ liệu này được dùng để:
-
-* Cập nhật test cases.
-* Cải thiện prompt classifier.
-* Cải thiện keyword trigger.
+| Ô | Nội dung |
+|---|---|
+| **Value** | Khách hàng Long Châu chờ 3–8 phút cho mọi câu hỏi, kể cả câu đơn giản. AI trả lời câu factual trong <3 giây và chuẩn bị context cho dược sĩ trước khi họ vào — giải quyết cả bottleneck thời gian chờ lẫn thời gian dược sĩ gather thông tin. |
+| **Trust** | Mọi câu trả lời AI kèm disclaimer rõ. Advisory không bao giờ được AI trả lời. Keyword safety gate chạy trước classifier — nếu câu chứa từ rủi ro (bệnh mãn tính, đang uống thuốc), force-route ngay không qua AI. Dược sĩ là người quyết định cuối cùng cho mọi câu advisory. |
+| **Feasibility** | Chi phí: ~$0.001/câu với gpt-4o-mini (3 LLM calls: classify + answer/gather + summary). Độ trễ: <5 giây round-trip. Rủi ro lớn nhất: classifier sai → mitigated bằng keyword gate + disclaimer. Ngưỡng dừng: nếu accuracy classify <80% trên test set thực tế, cần tighten prompts hoặc thêm keyword list. |
+| **Tín hiệu học** | Khi dược sĩ chỉnh sửa handoff summary → delta là tín hiệu sai. Khi user click "Hỏi thêm dược sĩ" sau câu factual → tín hiệu factual bị classify đúng nhưng answer thiếu. Cả hai đi vào bộ test cases để tune prompt. Hiện tại: thu thập thủ công (prototype). |
 
 ---
 
@@ -187,211 +38,98 @@ Dữ liệu này được dùng để:
 
 ### Lựa chọn
 
-**Conditional Automation**
+**Conditional Automation (kết hợp Automation và Augmentation)**
 
-### AI tự động thực hiện
+### AI và con người tham gia như thế nào
 
-* Phân loại câu hỏi.
-* Trả lời factual.
-* Thu thập context.
-* Tạo handoff summary.
+| Thành phần | Vai trò                                                                                  |
+| ---------- | ---------------------------------------------------------------------------------------- |
+| AI         | Phân loại câu hỏi, trả lời các câu hỏi factual, thu thập context và tạo handoff summary. |
+| Dược sĩ    | Đánh giá và trả lời các câu hỏi advisory liên quan đến tình trạng sức khỏe cá nhân.      |
+| Người dùng | Có thể yêu cầu chuyển sang dược sĩ bất kỳ lúc nào.                                       |
 
-### Con người quyết định
+### Mức độ tự động hóa
 
-* Dược sĩ quyết định với mọi câu hỏi advisory.
-* Người dùng quyết định có tiếp tục hỏi dược sĩ hay không.
+Sản phẩm kết hợp cả hai cách tiếp cận:
 
-### Lý do
+#### Automation
 
-Sai sót trong tư vấn thuốc có thể ảnh hưởng trực tiếp đến sức khỏe người dùng. Vì vậy AI chỉ được tự động hóa ở các trường hợp rủi ro thấp và phải chuyển cho dược sĩ ở các trường hợp cần đánh giá cá nhân.
+AI tự hành động trong phạm vi đã định:
+
+* Phân loại câu hỏi thành factual hoặc advisory.
+* Trả lời các câu hỏi factual như công dụng, thành phần, cách bảo quản thuốc.
+* Thu thập thông tin ban đầu từ người dùng.
+
+#### Augmentation
+
+AI hỗ trợ con người thay vì thay thế:
+
+* Tóm tắt bối cảnh cuộc hội thoại.
+* Chuẩn bị thông tin cho dược sĩ trước khi tư vấn.
+* Giúp dược sĩ giảm thời gian hỏi lại thông tin đã có.
+
+### Lý do lựa chọn
+
+Nhóm chọn **Conditional Automation** vì không phải mọi câu hỏi đều có cùng mức độ rủi ro.
+
+* Với các câu hỏi factual, AI có thể tự động xử lý an toàn và giúp người dùng nhận phản hồi gần như tức thì.
+* Với các câu hỏi advisory như tương tác thuốc, liều dùng theo bệnh lý hoặc tư vấn cho đối tượng đặc biệt, AI chỉ đóng vai trò hỗ trợ thu thập và tổng hợp thông tin; quyết định cuối cùng vẫn thuộc về dược sĩ.
+
+Long Châu đã có đội ngũ dược sĩ chuyên môn. Mục tiêu của sản phẩm không phải thay thế dược sĩ mà là phân luồng hiệu quả hơn, giảm tải các câu hỏi đơn giản và chuẩn bị sẵn context cho các trường hợp cần tư vấn chuyên sâu. Vì vậy, sản phẩm kết hợp **Automation ở các tác vụ rủi ro thấp** và **Augmentation ở các tác vụ cần chuyên môn con người**, trong một mô hình **Conditional Automation**.
 
 ---
 
 ## 5. Bốn đường đi của trải nghiệm
 
-| Đường đi | Tình huống | Hệ thống xử lý |
-|-----------|-----------|-----------|
-| **Đường thuận (Happy Path)** | User hỏi: "Paracetamol 500mg có tác dụng gì?" | AI classify là **Factual** và trả lời ngay trong dưới 3 giây kèm disclaimer. |
-| **Khi AI không chắc (Low Confidence)** | User hỏi: "Thuốc này uống được không?" | AI không đủ thông tin để phân loại nên hỏi thêm: "Bạn đang hỏi về thuốc nào?" hoặc "Bạn có đang dùng thuốc khác không?" |
-| **Khi AI sai / có rủi ro (Failure Path)** | User hỏi: "Tôi bị tiểu đường type 2 có dùng được Ibuprofen không?" | AI nhận diện đây là câu hỏi **Advisory**, không tự trả lời mà hỏi thêm context rồi tạo handoff summary và chuyển sang dược sĩ. |
-| **Khi người dùng sửa (Correction Path)** | User phát hiện AI hiểu sai hoặc dược sĩ nhận thấy summary chưa chính xác. | Dược sĩ chỉnh sửa summary và trả lời trực tiếp. Hệ thống lưu lại correction để cải thiện prompt và test cases sau này. |
----
-
-## 6. Những kiểu lỗi đáng lo nhất
-
-### Lỗi 1 – Classify sai Advisory thành Factual
-
-**Xuất hiện khi:**
-
-* Có bệnh nền nhưng AI không nhận diện.
-* User mô tả mơ hồ.
-
-**Ảnh hưởng:**
-
-* Người dùng nhận tư vấn không phù hợp.
-* Rủi ro sức khỏe cao.
-
-**Xử lý:**
-
-* Keyword trigger bắt buộc route.
-* Disclaimer bắt buộc trên mọi câu trả lời AI.
+| Đường đi | Câu hỏi | Hệ thống xử lý |
+|-----------|------------------------|----------------|
+| **Đường thuận (Happy Path)** | *"Paracetamol 500mg có tác dụng gì?"* | AI phân loại là **Factual**, trả lời trực tiếp trong < 3 giây kèm disclaimer nhẹ. |
+| **Khi AI không chắc (Low Confidence)** | *"Thuốc này uống được không?"* | AI không đủ thông tin để phân loại hoặc tư vấn an toàn. Hệ thống chuyển sang chế độ thu thập thêm ngữ cảnh và hỏi rõ hơn, ví dụ: *"Bạn đang hỏi về thuốc nào?"*, *"Bạn có đang dùng thuốc khác không?"*. |
+| **Khi AI phát hiện rủi ro (Failure Path)** | *"Tôi bị tiểu đường type 2 có dùng được Ibuprofen không?"* | Keyword/rule gate phát hiện đây là câu hỏi **Advisory** có yếu tố bệnh lý. AI không tự trả lời, không đi qua luồng factual, mà tạo handoff summary và chuyển cho dược sĩ/chuyên gia. UI hiển thị trạng thái cảnh báo và handoff. |
+| **Khi người dùng sửa (Correction Path)** | AI hiểu sai hoặc summary chưa chính xác. | Dược sĩ/chuyên gia chỉnh sửa summary và trả lời trực tiếp cho người dùng. Hệ thống lưu correction để cải thiện prompt, rule và test cases trong tương lai. |
 
 ---
 
-### Lỗi 2 – Tóm tắt context sai
+## 6. Failure modes nguy hiểm nhất
 
-**Xuất hiện khi:**
+**Lỗi 1 — Mis-classify advisory thành factual (nguy hiểm nhất)**
+- Khi nào: câu tư vấn cá nhân không có từ khoá rõ ràng (ví dụ: "Vitamin C uống buổi sáng hay tối tốt hơn?" — có vẻ factual nhưng có thể có bệnh nền).
+- Hậu quả: AI tự trả lời với thông tin chung → user tin dùng mà thiếu context bệnh nền → rủi ro sức khoẻ.
+- Xử lý: (a) keyword safety gate force-route trước classifier; (b) disclaimer bắt buộc cuối mọi câu factual; (c) prompt classifier bias toward advisory khi lưỡng lự.
 
-* AI bỏ sót thông tin quan trọng.
+**Lỗi 2 — Classifier không nhất quán**
+- Khi nào: cùng câu hỏi, model output thay đổi theo run.
+- Hậu quả: trải nghiệm không đồng đều.
+- Xử lý: JSON-mode strict, fallback to advisory nếu parse fail.
 
-**Ảnh hưởng:**
-
-* Dược sĩ mất thêm thời gian xác minh.
-
-**Xử lý:**
-
-* Hiển thị lịch sử chat đầy đủ.
-* Dược sĩ có quyền chỉnh sửa summary.
-
----
-
-### Lỗi 3 – Hallucination thông tin thuốc
-
-**Xuất hiện khi:**
-
-* AI trả lời ngoài phạm vi dữ liệu.
-
-**Ảnh hưởng:**
-
-* User tin vào thông tin sai.
-
-**Xử lý:**
-
-* Giới hạn phạm vi factual.
-* Khuyến khích trao đổi với dược sĩ trong trường hợp đặc biệt.
+**Lỗi 3 — Handoff summary sai hoặc thiếu thông tin**
+- Khi nào: context quá ngắn hoặc cuộc hội thoại ít turn.
+- Hậu quả: dược sĩ phải hỏi lại từ đầu — mất giá trị của AI gather.
+- Xử lý: prompt yêu cầu format cụ thể; prototype cho dược sĩ chỉnh summary trước khi tiếp nhận.
 
 ---
 
 ## 7. Kế hoạch kiểm thử và bằng chứng demo
 
-### Test Case 1 – Happy Path
+**Test cases:** xem `codebase/sample-questions.md` — 15 câu hỏi labeled factual/advisory/force-route.
 
-**Input:**
+**Demo inputs chuẩn bị:**
+- Happy: "Paracetamol 500mg tác dụng gì?" → factual, AI answer + disclaimer
+- Gather: "Thuốc đau đầu này uống được không?" → advisory_gather, AI hỏi thêm
+- Force-route: "Tôi đang điều trị tiểu đường, có dùng Ibuprofen được không?" → safety gate triggered, advisory_handoff
 
-> Paracetamol 500mg có tác dụng gì?
-
-**Kỳ vọng:**
-
-* Factual
-* Trả lời ngay
-
----
-
-### Test Case 2 – Advisory
-
-**Input:**
-
-> Tôi bị tiểu đường type 2 có dùng được Ibuprofen không?
-
-**Kỳ vọng:**
-
-* Route sang dược sĩ
-* Không tự trả lời
-
----
-
-### Test Case 3 – Low Confidence
-
-**Input:**
-
-> Thuốc này uống được không?
-
-**Kỳ vọng:**
-
-* Hỏi thêm thông tin
-
----
-
-### Bằng chứng lưu trong repo
-
-```text
-evidence/
-├── screenshots/
-├── sample-questions.md
-└── interview-notes.md
-
-tests/
-├── classifier-results.md
-├── failure-path-results.md
-└── screenshots/
-```
+**Bằng chứng có sẵn:**
+- Screenshot các case từ `codebase/triage-test-results.md`
+- Tất cả LLM calls thật (OpenRouter, model gpt-4o-mini)
 
 ---
 
 ## 8. Phân công
 
-| Thành viên         | Trách nhiệm   | Deliverable                                                          |
-| ------------------ | ------------- | -------------------------------------------------------------------- |
-| Nguyễn Hoàng Dương | Research      | evidence/sample-questions.md                                         |
-| Nguyễn Văn Phúc    | SPEC + Prompt | spec/spec.md, prompt-triage-classifier.md, prompt-handoff-summary.md |
-| Vũ Đình Phượng     | Prototype     | src/                                                                 |
-| Nguyễn Quang Hòa   | Testing       | tests/failure-path-results.md                                        |
-| Tiền Anh Kiệt      | Demo + README | README.md, demo-script.md                                            |
-
----
-
-## Phụ lục – Success Metrics
-
-### User Metrics
-
-* First response time < 5 giây.
-* Tỷ lệ tiếp tục cuộc hội thoại > 80%.
-* Giảm tỷ lệ bỏ chat.
-
-### Business Metrics
-
-* Giảm ít nhất 50% số câu hỏi factual chuyển đến dược sĩ.
-* Giảm thời gian xử lý trung bình của dược sĩ.
-* Tăng khả năng hỗ trợ ngoài giờ hành chính.
-
-### AI Metrics
-
-* Accuracy classifier ≥ 90%.
-* Tỷ lệ route sai < 5%.
-
----
-
-## Phụ lục – Keyword Trigger
-
-Các trường hợp sau sẽ tự động route sang dược sĩ:
-
-### Bệnh nền
-
-* Tiểu đường
-* Huyết áp
-* Tim mạch
-* Ung thư
-* Suy gan
-* Suy thận
-
-### Đối tượng đặc biệt
-
-* Trẻ sơ sinh
-* Trẻ em dưới 2 tuổi
-* Phụ nữ mang thai
-* Phụ nữ cho con bú
-* Người cao tuổi
-
-### Tương tác thuốc
-
-* Đang uống thuốc
-* Đang điều trị
-* Kết hợp thuốc
-* Tương tác thuốc
-
-### Triệu chứng nguy hiểm
-
-* Khó thở
-* Co giật
-* Đau ngực
-* Sốt cao kéo dài
+| Thành viên | Mã HV | Phụ trách |
+|---|---|---|
+| Tiền Anh Kiệt | 2A202600961 | Scaffold repo, Docker Compose, demo script, README, UI polish |
+| Vũ Đình Phượng | 2A202600634 | FastAPI backend, Streamlit frontend, Phase 2+3 integration |
+| Nguyễn Văn Phúc | 2A202600539 | Prompts (classifier, answer, handoff), SPEC hoàn thiện |
+| Nguyễn Hoàng Dương | 2A202600849 | Sample questions, evidence, test cases |
+| Nguyễn Quang Hoà | 2A202600986 | Test failure paths, triage-test-results.md, dry run |
