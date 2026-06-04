@@ -11,26 +11,37 @@ cp .env.example .env
 docker compose up --build
 ```
 
-- Chat UI: http://localhost:8501
+- **Long Châu UI (demo chính):** http://localhost:3000
+- Chat UI (Streamlit): http://localhost:8501
 - API: http://localhost:8000
 - Health check: http://localhost:8000/health
 
 ### Cách 2: Chạy native (không cần Docker)
 
-**Backend:**
+**Terminal 1 — Backend:**
 ```bash
 cd codebase/backend
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp ../.env.example ../.env  # điền API key
-BACKEND_URL=http://localhost:8000 uvicorn main:app --reload
+cp ../.env.example ../.env   # điền OPENROUTER_API_KEY
+source ../.env               # load env vars
+uvicorn main:app --reload --port 8000
 ```
 
-**Frontend (terminal khác):**
+**Terminal 2 — Streamlit frontend:**
 ```bash
 cd codebase/frontend
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 BACKEND_URL=http://localhost:8000 streamlit run app.py
 ```
+
+**Terminal 3 — Long Châu static shell (port 3000):**
+```bash
+cd codebase/static-shell
+python3 -m http.server 3000
+```
+> Truy cập http://localhost:3000 — widget tự gọi `http://localhost:8000/chat`.
 
 ## Biến môi trường
 
@@ -40,12 +51,30 @@ BACKEND_URL=http://localhost:8000 streamlit run app.py
 | `OPENROUTER_MODEL` | `openai/gpt-4o-mini` | Model dùng qua OpenRouter |
 | `BACKEND_URL` | `http://backend:8000` | URL backend (override khi chạy native) |
 
+## Logs
+
+Được ghi tự động vào `backend/` (không commit vào git):
+
+| File | Ghi khi nào | Nội dung |
+|---|---|---|
+| `conversation-log.jsonl` | Mọi `/chat` request | ts, route, model, safety_triggered, message, reply, history_len |
+| `handoff-log.jsonl` | Chỉ `advisory_handoff` | ts, pharmacist, safety_triggered, summary, last_message |
+
+```bash
+# Xem log realtime
+tail -f codebase/backend/conversation-log.jsonl | python3 -m json.tool
+
+# Lọc chỉ handoff
+cat codebase/backend/handoff-log.jsonl
+```
+
 ## Công cụ và API đã dùng
 
 - **AI:** OpenRouter → `openai/gpt-4o-mini` (3 LLM calls: classifier, answer/gather, handoff summary)
 - **Backend:** FastAPI + uvicorn (Python 3.12)
-- **Frontend:** Streamlit
-- **Infrastructure:** Docker Compose
+- **Frontend:** Streamlit + Long Châu static shell (vanilla JS)
+- **Product search:** Long Châu internal search API (không cần auth)
+- **Infrastructure:** Docker Compose (backend + frontend + nginx)
 - **HTTP client:** httpx (async)
 
 ## Cấu trúc code
@@ -55,6 +84,8 @@ codebase/
 ├── backend/
 │   ├── main.py              # FastAPI app + /health + /chat endpoint
 │   ├── triage.py            # Orchestration: safety_gate → classify → answer/gather/handoff
+│   ├── longchau_search.py   # Long Châu product search API (async, trả name/price/url)
+│   ├── chat_log.py          # Logging: conversation-log.jsonl (mọi chat) + handoff-log.jsonl
 │   ├── openrouter_client.py # Thin httpx wrapper cho OpenRouter API
 │   ├── prompts.py           # System prompts (classifier, answer, gather, handoff)
 │   ├── safety_gate.py       # Keyword list + is_high_risk() — chạy trước classifier
@@ -62,7 +93,14 @@ codebase/
 ├── frontend/
 │   ├── app.py               # Streamlit chat UI
 │   └── requirements.txt
-├── docker-compose.yml
+├── static-shell/            # Long Châu branded demo UI (port 3000)
+│   ├── index.html           # Homepage shell (nav, hero, products, footer)
+│   ├── chat-widget.js       # Floating chat button + panel, gọi /chat trực tiếp
+│   └── assets/
+│       └── avatar.png       # Avatar dược sĩ AI
+├── nginx/
+│   └── nginx.conf           # Serve static-shell trên port 3000
+├── docker-compose.yml       # 3 services: backend, frontend (Streamlit), static-shell (nginx)
 ├── .env.example
 ├── .gitignore
 ├── sample-questions.md      # 15 test cases labeled factual/advisory

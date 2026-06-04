@@ -5,17 +5,20 @@ Flow: injection_check → safety_gate → classify → factual_answer | advisory
 
 import openrouter_client as llm
 import prompts
+from chat_log import log_handoff
+from longchau_search import search_products
 from safety_gate import is_high_risk, is_injection
 
-PHARMACIST_NAMES = ["Dược sĩ Lan", "Dược sĩ Minh", "Dược sĩ Hương"]
-_pharmacist_index = 0
 
 
-def _next_pharmacist() -> str:
-    global _pharmacist_index
-    name = PHARMACIST_NAMES[_pharmacist_index % len(PHARMACIST_NAMES)]
-    _pharmacist_index += 1
-    return name
+
+def _format_product_links(products: list[dict]) -> str:
+    if not products:
+        return ""
+    lines = ["\n\n---\n🛒 **Sản phẩm tại Long Châu:**"]
+    for p in products:
+        lines.append(f"• [{p['name']}]({p['url']}) — {p['price']}")
+    return "\n".join(lines)
 
 
 async def triage(message: str, history: list[dict]) -> dict:
@@ -40,10 +43,10 @@ async def triage(message: str, history: list[dict]) -> dict:
         except Exception:
             handoff_summary = f"Khách hỏi: {message[:200]}. Cần tư vấn chuyên sâu."
 
-        pharmacist = _next_pharmacist()
+        log_handoff(message, history, handoff_summary, pharmacist="", safety_triggered=True)
         return {
             "route": "advisory_handoff",
-            "reply": f"⚠️ Câu hỏi của bạn liên quan đến tình trạng sức khoẻ cụ thể và cần được tư vấn bởi chuyên gia.\n\nĐang chuyển cho **{pharmacist}** hỗ trợ bạn ngay.",
+            "reply": "⚠️ Câu hỏi của bạn liên quan đến tình trạng sức khoẻ cụ thể và cần được tư vấn bởi chuyên gia.\n\nĐang chuyển cho **dược sĩ** hỗ trợ bạn ngay.",
             "handoff_summary": handoff_summary,
             "safety_gate_triggered": True,
             "model": model_name,
@@ -59,26 +62,71 @@ async def triage(message: str, history: list[dict]) -> dict:
         classification = await llm.chat_json(classify_messages)
         question_type = classification.get("type", "advisory")
         needs_context = classification.get("needs_context", True)
+        drug_keyword = classification.get("drug_keyword") or None
+        is_dangerous = classification.get("is_dangerous", False)
     except Exception:
         # Fail safe: unknown → advisory
         question_type = "advisory"
         needs_context = True
+        drug_keyword = None
+        is_dangerous = False
 
-    # 3a. Factual → answer immediately
+    # 2b. Out of scope — refuse without LLM answer
+    if question_type == "out_of_scope":
+        if is_dangerous:
+            reply = (
+                "⚠️ Câu hỏi này nằm ngoài phạm vi tư vấn dược phẩm và có thể liên quan đến tình huống khẩn cấp.\n\n"
+                "Vui lòng liên hệ ngay:\n"
+                "• **Cấp cứu:** 115\n"
+                "• **Trung tâm y tế hoặc bệnh viện gần nhất**\n\n"
+                "Tôi không thể cung cấp thông tin này."
+            )
+        else:
+            reply = "Xin lỗi, câu hỏi này nằm ngoài phạm vi tư vấn dược phẩm của tôi. Tôi chỉ hỗ trợ các câu hỏi liên quan đến thuốc và sức khoẻ."
+        return {
+            "route": "out_of_scope",
+            "reply": reply,
+            "handoff_summary": None,
+            "safety_gate_triggered": False,
+            "model": model_name,
+        }
+
+    # 3a. Factual → answer + product links in parallel (only when a drug keyword exists)
     if question_type == "factual":
-        try:
-            answer_messages = [
-                {"role": "system", "content": prompts.FACTUAL_ANSWER_SYSTEM},
-                *history,
-                {"role": "user", "content": message},
-            ]
-            reply = await llm.chat(answer_messages)
-        except Exception:
-            reply = "Xin lỗi, không thể tải thông tin lúc này. Vui lòng thử lại hoặc hỏi dược sĩ trực tiếp."
+        import asyncio
 
+        answer_messages = [
+            {"role": "system", "content": prompts.FACTUAL_ANSWER_SYSTEM},
+            *history,
+            {"role": "user", "content": message},
+        ]
+
+        if drug_keyword:
+            results = await asyncio.gather(
+                llm.chat(answer_messages),
+                search_products(drug_keyword, max_results=3),
+                return_exceptions=True,
+            )
+            reply = results[0] if not isinstance(results[0], Exception) else None
+            products = results[1] if not isinstance(results[1], Exception) else []
+            if reply is None:
+                # LLM failed but search may have succeeded — show products with fallback text
+                reply = "Xin lỗi, không thể tải thông tin lúc này. Vui lòng thử lại hoặc hỏi dược sĩ trực tiếp."
+        else:
+            try:
+                reply = await llm.chat(answer_messages)
+            except Exception:
+                reply = "Xin lỗi, không thể tải thông tin lúc này. Vui lòng thử lại hoặc hỏi dược sĩ trực tiếp."
+            products = []
+
+        product_md = _format_product_links(products)
         return {
             "route": "factual",
+            # reply_md: for text-based UIs (Streamlit) that render markdown
+            # reply: clean text for widget (uses structured `products` field)
             "reply": reply,
+            "reply_md": reply + product_md,
+            "products": products,
             "handoff_summary": None,
             "safety_gate_triggered": False,
             "model": model_name,
@@ -115,10 +163,10 @@ async def triage(message: str, history: list[dict]) -> dict:
     except Exception:
         handoff_summary = f"Khách hỏi: {message[:200]}. Cần tư vấn chuyên sâu."
 
-    pharmacist = _next_pharmacist()
+    log_handoff(message, history, handoff_summary, pharmacist="", safety_triggered=False)
     return {
         "route": "advisory_handoff",
-        "reply": f"Cảm ơn bạn đã cung cấp thông tin. Đang chuyển cho **{pharmacist}** tư vấn chi tiết cho bạn.",
+        "reply": "Cảm ơn bạn đã cung cấp thông tin. Đang chuyển cho **dược sĩ** tư vấn chi tiết cho bạn.",
         "handoff_summary": handoff_summary,
         "safety_gate_triggered": False,
         "model": model_name,

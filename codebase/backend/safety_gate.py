@@ -1,11 +1,22 @@
 """
 Safety gate runs BEFORE the AI classifier.
-Two checks:
-1. is_high_risk()     — medical risk keywords → force advisory route
-2. is_injection()     — off-topic instructions embedded in message → block and warn
-Rationale: prompt injection can hijack the LLM into executing arbitrary tasks;
-off-topic instructions must be rejected before any LLM call.
+Three checks (in order):
+1. is_crisis()        — self-harm / suicide intent → hard refuse, show crisis resources
+2. is_high_risk()     — medical risk keywords → force advisory route
+3. is_injection()     — off-topic instructions embedded in message → block and warn
 """
+
+CRISIS_KEYWORDS = [
+    # Suicide intent
+    "tự tử", "tự sát", "muốn chết", "tìm cách chết", "kết thúc cuộc sống",
+    "không muốn sống", "chán sống",
+    # Drug-mediated self-harm
+    "uống thuốc để chết", "uống thuốc để tự tử", "uống thuốc tự tử",
+    "dùng thuốc để chết", "liều chết", "liều gây chết", "liều tử vong",
+    "bao nhiêu viên để chết", "uống bao nhiêu để chết",
+    # English equivalents (in case of code-switching)
+    "want to die", "kill myself", "end my life", "overdose to die",
+]
 
 HIGH_RISK_KEYWORDS = [
     # Chronic disease context
@@ -41,6 +52,11 @@ INJECTION_PATTERNS = [
     # General off-topic task injection
     "hãy làm", "hãy thực hiện", "execute the following",
 ]
+
+
+def is_crisis(message: str) -> bool:
+    msg_lower = message.lower()
+    return any(kw in msg_lower for kw in CRISIS_KEYWORDS)
 
 
 def is_high_risk(message: str) -> bool:

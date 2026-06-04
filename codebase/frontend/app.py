@@ -89,7 +89,8 @@ if prompt:
                 data = resp.json()
 
                 route = data.get("route", "")
-                reply = data.get("reply", "")
+                # reply_md includes product links as markdown; fallback to reply
+                reply = data.get("reply_md") or data.get("reply", "")
                 handoff_summary = data.get("handoff_summary")
                 safety_triggered = data.get("safety_gate_triggered", False)
                 model = data.get("model", "")
@@ -120,7 +121,8 @@ if prompt:
                         "model": model,
                     },
                 })
-                st.session_state.history.append({"role": "assistant", "content": reply})
+                # Use clean reply (no product markdown) in LLM history context
+                st.session_state.history.append({"role": "assistant", "content": data.get("reply", reply)})
 
             except httpx.ConnectError:
                 st.error("❌ Mất kết nối backend. Vui lòng thử lại sau.")
