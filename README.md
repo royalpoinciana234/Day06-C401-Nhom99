@@ -1,3 +1,24 @@
+# Day06-C401-Nhom99 — Long Châu AI Triage Middleware
+
+## Thành viên nhóm
+
+| Mã học viên | Họ và tên |
+|---|---|
+| HV001 | Tiền Anh Kiệt |
+| HV002 | Vũ Đình Phượng |
+| HV003 | Nguyễn Văn Phúc |
+| HV004 | Nguyễn Hoàng Dương |
+| HV005 | Nguyễn Quang Hoà |
+
+## Sản phẩm
+
+AI middleware cho tính năng chat nhà thuốc Long Châu: phân loại câu hỏi thuốc thành factual (AI tự trả lời ngay kèm disclaimer) hoặc advisory (AI thu thập context rồi route sang dược sĩ kèm tóm tắt sẵn), với safety gate từ khoá đảm bảo câu hỏi rủi ro luôn đến người thật.
+
+- **SPEC:** [`spec/spec.md`](spec/spec.md)
+- **Code & hướng dẫn chạy:** [`codebase/README.md`](codebase/README.md)
+
+---
+
 # Batch 02 · Day 06 — AI Product Hackathon
 
 > SPEC → Prototype → Demo. Hôm nay không có bài giảng mới — hôm nay chứng minh: SPEC là giả thuyết, prototype là bằng chứng, demo là thuyết phục.

@@ -1,13 +1,119 @@
-# Codebase
+# Codebase — Long Châu AI Triage Middleware
 
-Đây là nơi nhóm nộp toàn bộ phần code của prototype. Mục tiêu là để giảng viên và các nhóm khác nhìn được sản phẩm chạy như thế nào, và mỗi thành viên đã đóng góp ra sao.
+## Cách chạy prototype
 
-## Nhóm cần làm
+### Cách 1: Docker Compose (khuyến nghị)
 
-- Đưa mã nguồn của prototype vào folder này. Nếu prototype được deploy hoặc host ở nơi khác, hãy để lại đường link kèm hướng dẫn truy cập.
-- Trong file `README.md` của nhóm, ghi rõ ba điều: cách chạy prototype (các bước cài đặt và biến môi trường nếu cần), những công cụ và API đã dùng (model AI, framework, công cụ dựng giao diện…), và phần phân công ai làm gì.
-- Mỗi thành viên nên có ít nhất một commit thực chất trong repo — đây là căn cứ để ghi nhận đóng góp của từng người.
+```bash
+cd codebase
+cp .env.example .env
+# Điền OPENROUTER_API_KEY vào .env
+docker compose up --build
+```
 
-## Lưu ý
+- **Long Châu UI (demo chính):** http://localhost:3000
+- Chat UI (Streamlit): http://localhost:8501
+- API: http://localhost:8000
+- Health check: http://localhost:8000/health
 
-Đừng commit những thông tin nhạy cảm như API key hay file `.env`. Nếu prototype cần các biến môi trường, hãy dùng một file `.env.example` để mô tả các biến đó thay vì để lộ giá trị thật.
+### Cách 2: Chạy native (không cần Docker)
+
+**Terminal 1 — Backend:**
+```bash
+cd codebase/backend
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp ../.env.example ../.env   # điền OPENROUTER_API_KEY
+source ../.env               # load env vars
+uvicorn main:app --reload --port 8000
+```
+
+**Terminal 2 — Streamlit frontend:**
+```bash
+cd codebase/frontend
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+BACKEND_URL=http://localhost:8000 streamlit run app.py
+```
+
+**Terminal 3 — Long Châu static shell (port 3000):**
+```bash
+cd codebase/static-shell
+python3 -m http.server 3000
+```
+> Truy cập http://localhost:3000 — widget tự gọi `http://localhost:8000/chat`.
+
+## Biến môi trường
+
+| Biến | Giá trị mặc định | Mô tả |
+|---|---|---|
+| `OPENROUTER_API_KEY` | *(bắt buộc)* | API key từ openrouter.ai |
+| `OPENROUTER_MODEL` | `openai/gpt-4o-mini` | Model dùng qua OpenRouter |
+| `BACKEND_URL` | `http://backend:8000` | URL backend (override khi chạy native) |
+
+## Logs
+
+Được ghi tự động vào `backend/` (không commit vào git):
+
+| File | Ghi khi nào | Nội dung |
+|---|---|---|
+| `conversation-log.jsonl` | Mọi `/chat` request | ts, route, model, safety_triggered, message, reply, history_len |
+| `handoff-log.jsonl` | Chỉ `advisory_handoff` | ts, pharmacist, safety_triggered, summary, last_message |
+
+```bash
+# Xem log realtime
+tail -f codebase/backend/conversation-log.jsonl | python3 -m json.tool
+
+# Lọc chỉ handoff
+cat codebase/backend/handoff-log.jsonl
+```
+
+## Công cụ và API đã dùng
+
+- **AI:** OpenRouter → `openai/gpt-4o-mini` (3 LLM calls: classifier, answer/gather, handoff summary)
+- **Backend:** FastAPI + uvicorn (Python 3.12)
+- **Frontend:** Streamlit + Long Châu static shell (vanilla JS)
+- **Product search:** Long Châu internal search API (không cần auth)
+- **Infrastructure:** Docker Compose (backend + frontend + nginx)
+- **HTTP client:** httpx (async)
+
+## Cấu trúc code
+
+```
+codebase/
+├── backend/
+│   ├── main.py              # FastAPI app + /health + /chat endpoint
+│   ├── triage.py            # Orchestration: safety_gate → classify → answer/gather/handoff
+│   ├── longchau_search.py   # Long Châu product search API (async, trả name/price/url)
+│   ├── chat_log.py          # Logging: conversation-log.jsonl (mọi chat) + handoff-log.jsonl
+│   ├── openrouter_client.py # Thin httpx wrapper cho OpenRouter API
+│   ├── prompts.py           # System prompts (classifier, answer, gather, handoff)
+│   ├── safety_gate.py       # Keyword list + is_high_risk() — chạy trước classifier
+│   └── requirements.txt
+├── frontend/
+│   ├── app.py               # Streamlit chat UI
+│   └── requirements.txt
+├── static-shell/            # Long Châu branded demo UI (port 3000)
+│   ├── index.html           # Homepage shell (nav, hero, products, footer)
+│   ├── chat-widget.js       # Floating chat button + panel, gọi /chat trực tiếp
+│   └── assets/
+│       └── avatar.png       # Avatar dược sĩ AI
+├── nginx/
+│   └── nginx.conf           # Serve static-shell trên port 3000
+├── docker-compose.yml       # 3 services: backend, frontend (Streamlit), static-shell (nginx)
+├── .env.example
+├── .gitignore
+├── sample-questions.md      # 15 test cases labeled factual/advisory
+├── demo-script.md           # Kịch bản demo 4–5 phút
+└── triage-test-results.md   # Kết quả test từng case
+```
+
+## Phân công
+
+| Thành viên | Phụ trách chính |
+|---|---|
+| Tiền Anh Kiệt | Scaffold, Docker Compose, demo script, README, UI polish |
+| Vũ Đình Phượng | FastAPI backend, Streamlit frontend, Phase 2+3 |
+| Nguyễn Văn Phúc | Prompts (classifier, answer, handoff summary), SPEC |
+| Nguyễn Hoàng Dương | Sample questions, evidence, test cases |
+| Nguyễn Quang Hoà | Test failure paths, triage-test-results.md, dry run |
