@@ -5,6 +5,7 @@ Flow: injection_check → safety_gate → classify → factual_answer | advisory
 
 import openrouter_client as llm
 import prompts
+from handoff_log import log_handoff
 from longchau_search import search_products
 from safety_gate import is_high_risk, is_injection
 
@@ -52,6 +53,7 @@ async def triage(message: str, history: list[dict]) -> dict:
             handoff_summary = f"Khách hỏi: {message[:200]}. Cần tư vấn chuyên sâu."
 
         pharmacist = _next_pharmacist()
+        log_handoff(message, history, handoff_summary, pharmacist, safety_triggered=True)
         return {
             "route": "advisory_handoff",
             "reply": f"⚠️ Câu hỏi của bạn liên quan đến tình trạng sức khoẻ cụ thể và cần được tư vấn bởi chuyên gia.\n\nĐang chuyển cho **{pharmacist}** hỗ trợ bạn ngay.",
@@ -148,6 +150,7 @@ async def triage(message: str, history: list[dict]) -> dict:
         handoff_summary = f"Khách hỏi: {message[:200]}. Cần tư vấn chuyên sâu."
 
     pharmacist = _next_pharmacist()
+    log_handoff(message, history, handoff_summary, pharmacist, safety_triggered=False)
     return {
         "route": "advisory_handoff",
         "reply": f"Cảm ơn bạn đã cung cấp thông tin. Đang chuyển cho **{pharmacist}** tư vấn chi tiết cho bạn.",
