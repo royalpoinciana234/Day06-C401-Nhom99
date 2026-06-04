@@ -63,11 +63,33 @@ async def triage(message: str, history: list[dict]) -> dict:
         question_type = classification.get("type", "advisory")
         needs_context = classification.get("needs_context", True)
         drug_keyword = classification.get("drug_keyword") or None
+        is_dangerous = classification.get("is_dangerous", False)
     except Exception:
         # Fail safe: unknown → advisory
         question_type = "advisory"
         needs_context = True
         drug_keyword = None
+        is_dangerous = False
+
+    # 2b. Out of scope — refuse without LLM answer
+    if question_type == "out_of_scope":
+        if is_dangerous:
+            reply = (
+                "⚠️ Câu hỏi này nằm ngoài phạm vi tư vấn dược phẩm và có thể liên quan đến tình huống khẩn cấp.\n\n"
+                "Vui lòng liên hệ ngay:\n"
+                "• **Cấp cứu:** 115\n"
+                "• **Trung tâm y tế hoặc bệnh viện gần nhất**\n\n"
+                "Tôi không thể cung cấp thông tin này."
+            )
+        else:
+            reply = "Xin lỗi, câu hỏi này nằm ngoài phạm vi tư vấn dược phẩm của tôi. Tôi chỉ hỗ trợ các câu hỏi liên quan đến thuốc và sức khoẻ."
+        return {
+            "route": "out_of_scope",
+            "reply": reply,
+            "handoff_summary": None,
+            "safety_gate_triggered": False,
+            "model": model_name,
+        }
 
     # 3a. Factual → answer + product links in parallel (only when a drug keyword exists)
     if question_type == "factual":
