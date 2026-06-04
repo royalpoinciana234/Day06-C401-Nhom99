@@ -47,7 +47,7 @@ def log_handoff(message: str, history: list[dict], summary: str, pharmacist: str
     })
 
 
-def log_report(user_message: str, bot_reply: str, route: str, model: str) -> None:
+def log_report(user_message: str, bot_reply: str, route: str, model: str, description: str = "") -> None:
     """Log user-flagged bot replies."""
     _append(_REPORT_LOG, {
         "ts": datetime.now(timezone.utc).isoformat(),
@@ -55,4 +55,5 @@ def log_report(user_message: str, bot_reply: str, route: str, model: str) -> Non
         "model": model,
         "user_message": user_message[:500],
         "bot_reply": bot_reply[:500],
+        "description": description[:300],
     })

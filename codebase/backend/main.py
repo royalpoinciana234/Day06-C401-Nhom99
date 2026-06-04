@@ -36,6 +36,7 @@ class ReportRequest(BaseModel):
     bot_reply: str
     route: str = ""
     model: str = ""
+    description: str = ""
 
 
 def stub_route(message: str) -> dict:
@@ -83,7 +84,7 @@ def health():
 
 @app.post("/report")
 async def report(req: ReportRequest):
-    log_report(req.user_message, req.bot_reply, req.route, req.model)
+    log_report(req.user_message, req.bot_reply, req.route, req.model, req.description)
     return {"status": "ok"}
 
 

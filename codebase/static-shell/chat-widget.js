@@ -73,6 +73,7 @@
       .lc-msg { display: flex; max-width: 92%; min-width: 0; gap: 8px; }
       .lc-msg.lc-user { align-self: flex-end; flex-direction: row-reverse; max-width: 82%; }
       .lc-msg.lc-bot { align-self: flex-start; flex-direction: row; width: 92%; }
+      .lc-msg.lc-bot .lc-msg-body { position: relative; }
       .lc-msg-avatar {
         width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
         overflow: hidden; margin-top: 2px; background: #e8f4fb;
@@ -168,14 +169,41 @@
       .lc-chat-send:hover { background: #0085D2; transform: scale(1.05); }
       .lc-chat-send:disabled { background: #ccc; cursor: not-allowed; transform: none; }
 
-      .lc-report-btn {
+      .lc-report-trigger {
+        position: absolute; top: 4px; right: 4px;
         background: none; border: none; cursor: pointer;
-        font-size: 13px; color: #ddd; padding: 2px 4px;
-        margin-top: 2px; border-radius: 4px; line-height: 1;
-        transition: color 0.2s; align-self: flex-start;
+        font-size: 13px; color: #bbb; padding: 2px 5px;
+        border-radius: 4px; line-height: 1; z-index: 1;
+        opacity: 0; transition: opacity 0.15s, color 0.15s;
       }
-      .lc-report-btn:hover:not(:disabled) { color: #e05; }
-      .lc-report-btn:disabled { cursor: default; color: #5a9e4f; font-size: 11px; }
+      .lc-msg.lc-bot:hover .lc-report-trigger { opacity: 1; }
+      .lc-report-trigger:hover { color: #c0392b; background: rgba(0,0,0,0.04); }
+
+      .lc-report-form {
+        margin-top: 6px; padding: 8px 10px;
+        background: #fff8f0; border: 1px solid #FFB74D; border-radius: 8px;
+        display: flex; flex-direction: column; gap: 6px;
+      }
+      .lc-report-form-label { font-size: 11px; color: #888; font-weight: 600; }
+      .lc-report-form textarea {
+        width: 100%; box-sizing: border-box;
+        border: 1px solid #ddd; border-radius: 6px;
+        padding: 6px 8px; font-size: 12.5px; font-family: inherit;
+        resize: none; outline: none; line-height: 1.4;
+      }
+      .lc-report-form textarea:focus { border-color: #FFB74D; }
+      .lc-report-form-actions { display: flex; gap: 6px; justify-content: flex-end; }
+      .lc-report-form-cancel {
+        background: none; border: 1px solid #ddd; border-radius: 6px;
+        padding: 4px 10px; font-size: 12px; cursor: pointer; color: #666;
+      }
+      .lc-report-form-confirm {
+        background: #E65100; border: none; border-radius: 6px;
+        padding: 4px 10px; font-size: 12px; cursor: pointer;
+        color: white; font-weight: 600;
+      }
+      .lc-report-form-confirm:disabled { background: #ccc; cursor: default; }
+      .lc-report-done { font-size: 11.5px; color: #5a9e4f; margin-top: 4px; }
     `;
     const style = document.createElement('style');
     style.textContent = css;
@@ -292,26 +320,49 @@
 
     msgs.appendChild(wrapper);
 
-    // Attach 👎 report button to every bot message
+    // Hover-reveal report trigger (top-right of message body, visible on hover)
     if (userMsg) {
       const body = wrapper.querySelector('.lc-msg-body');
       if (body) {
-        const btn = document.createElement('button');
-        btn.className = 'lc-report-btn';
-        btn.title = 'Báo cáo câu trả lời này';
-        btn.textContent = '👎';
-        const ts = body.querySelector('.lc-ts');
-        if (ts) body.insertBefore(btn, ts);
-        else body.appendChild(btn);
+        const trigger = document.createElement('button');
+        trigger.className = 'lc-report-trigger';
+        trigger.title = 'Báo cáo câu trả lời này';
+        trigger.textContent = '🚩';
+        body.appendChild(trigger);
 
-        btn.addEventListener('click', () => {
-          btn.disabled = true;
-          btn.textContent = '✓';
-          fetch(BACKEND_URL + '/report', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_message: userMsg, bot_reply: reply, route, model }),
-          }).catch(() => {});
+        trigger.addEventListener('click', () => {
+          trigger.style.display = 'none';
+
+          const form = document.createElement('div');
+          form.className = 'lc-report-form';
+          form.innerHTML = `
+            <div class="lc-report-form-label">Mô tả vấn đề (tuỳ chọn):</div>
+            <textarea rows="2" placeholder="Câu trả lời sai, thiếu thông tin..."></textarea>
+            <div class="lc-report-form-actions">
+              <button class="lc-report-form-cancel">Huỷ</button>
+              <button class="lc-report-form-confirm">Gửi báo cáo</button>
+            </div>
+          `;
+          const ts = body.querySelector('.lc-ts');
+          if (ts) body.insertBefore(form, ts);
+          else body.appendChild(form);
+          form.querySelector('textarea').focus();
+
+          form.querySelector('.lc-report-form-cancel').addEventListener('click', () => {
+            form.remove();
+            trigger.style.display = '';
+          });
+
+          form.querySelector('.lc-report-form-confirm').addEventListener('click', () => {
+            const description = form.querySelector('textarea').value.trim();
+            form.querySelector('.lc-report-form-confirm').disabled = true;
+            form.innerHTML = '<div class="lc-report-done">✓ Đã ghi nhận. Cảm ơn phản hồi của bạn!</div>';
+            fetch(BACKEND_URL + '/report', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ user_message: userMsg, bot_reply: reply, route, model, description }),
+            }).catch(() => {});
+          });
         });
       }
     }
