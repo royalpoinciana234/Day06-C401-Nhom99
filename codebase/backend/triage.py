@@ -64,12 +64,14 @@ async def triage(message: str, history: list[dict]) -> dict:
         needs_context = classification.get("needs_context", True)
         drug_keyword = classification.get("drug_keyword") or None
         is_dangerous = classification.get("is_dangerous", False)
+        show_products = classification.get("show_products", True)
     except Exception:
         # Fail safe: unknown → advisory
         question_type = "advisory"
         needs_context = True
         drug_keyword = None
         is_dangerous = False
+        show_products = True
 
     # 2b. Out of scope — refuse without LLM answer
     if question_type == "out_of_scope":
@@ -101,7 +103,7 @@ async def triage(message: str, history: list[dict]) -> dict:
             {"role": "user", "content": message},
         ]
 
-        if drug_keyword:
+        if drug_keyword and show_products:
             results = await asyncio.gather(
                 llm.chat(answer_messages),
                 search_products(drug_keyword, max_results=3),
