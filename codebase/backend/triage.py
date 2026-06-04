@@ -80,14 +80,16 @@ async def triage(message: str, history: list[dict]) -> dict:
         ]
 
         if drug_keyword:
-            try:
-                reply, products = await asyncio.gather(
-                    llm.chat(answer_messages),
-                    search_products(drug_keyword, max_results=3),
-                )
-            except Exception:
+            results = await asyncio.gather(
+                llm.chat(answer_messages),
+                search_products(drug_keyword, max_results=3),
+                return_exceptions=True,
+            )
+            reply = results[0] if not isinstance(results[0], Exception) else None
+            products = results[1] if not isinstance(results[1], Exception) else []
+            if reply is None:
+                # LLM failed but search may have succeeded — show products with fallback text
                 reply = "Xin lỗi, không thể tải thông tin lúc này. Vui lòng thử lại hoặc hỏi dược sĩ trực tiếp."
-                products = []
         else:
             try:
                 reply = await llm.chat(answer_messages)
