@@ -21,6 +21,7 @@ docker compose up --build
 **Terminal 1 — Backend:**
 ```bash
 cd codebase/backend
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp ../.env.example ../.env   # điền OPENROUTER_API_KEY
 source ../.env               # load env vars
@@ -30,6 +31,7 @@ uvicorn main:app --reload --port 8000
 **Terminal 2 — Streamlit frontend:**
 ```bash
 cd codebase/frontend
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 BACKEND_URL=http://localhost:8000 streamlit run app.py
 ```
