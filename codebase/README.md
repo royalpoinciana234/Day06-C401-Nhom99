@@ -51,6 +51,23 @@ python3 -m http.server 3000
 | `OPENROUTER_MODEL` | `openai/gpt-4o-mini` | Model dùng qua OpenRouter |
 | `BACKEND_URL` | `http://backend:8000` | URL backend (override khi chạy native) |
 
+## Logs
+
+Được ghi tự động vào `backend/` (không commit vào git):
+
+| File | Ghi khi nào | Nội dung |
+|---|---|---|
+| `conversation-log.jsonl` | Mọi `/chat` request | ts, route, model, safety_triggered, message, reply, history_len |
+| `handoff-log.jsonl` | Chỉ `advisory_handoff` | ts, pharmacist, safety_triggered, summary, last_message |
+
+```bash
+# Xem log realtime
+tail -f codebase/backend/conversation-log.jsonl | python3 -m json.tool
+
+# Lọc chỉ handoff
+cat codebase/backend/handoff-log.jsonl
+```
+
 ## Công cụ và API đã dùng
 
 - **AI:** OpenRouter → `openai/gpt-4o-mini` (3 LLM calls: classifier, answer/gather, handoff summary)
@@ -68,6 +85,7 @@ codebase/
 │   ├── main.py              # FastAPI app + /health + /chat endpoint
 │   ├── triage.py            # Orchestration: safety_gate → classify → answer/gather/handoff
 │   ├── longchau_search.py   # Long Châu product search API (async, trả name/price/url)
+│   ├── chat_log.py          # Logging: conversation-log.jsonl (mọi chat) + handoff-log.jsonl
 │   ├── openrouter_client.py # Thin httpx wrapper cho OpenRouter API
 │   ├── prompts.py           # System prompts (classifier, answer, gather, handoff)
 │   ├── safety_gate.py       # Keyword list + is_high_risk() — chạy trước classifier
