@@ -13,10 +13,11 @@ Phân loại câu hỏi của khách hàng thành một trong hai loại:
 - "advisory": câu hỏi cần tư vấn cá nhân (liều dùng cho bệnh cụ thể, tương tác thuốc, thuốc phù hợp với tình trạng sức khoẻ)
 
 Trả về JSON với format chính xác:
-{"type": "factual" | "advisory", "needs_context": true | false}
+{"type": "factual" | "advisory", "needs_context": true | false, "drug_keyword": "<tên thuốc hoặc sản phẩm cụ thể, hoặc null nếu câu hỏi không đề cập sản phẩm>"}
 
 needs_context = true khi advisory nhưng thiếu thông tin (không biết bệnh, thuốc đang dùng, tuổi...).
 needs_context = false khi advisory và đã có đủ thông tin để viết handoff summary.
+drug_keyword = tên thuốc/sản phẩm được đề cập (vd: "paracetamol", "vitamin C"), null nếu không có.
 
 Chỉ trả về JSON, không giải thích thêm.
 """ + _ANTI_INJECTION

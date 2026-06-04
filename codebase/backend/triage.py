@@ -5,6 +5,7 @@ Flow: injection_check → safety_gate → classify → factual_answer | advisory
 
 import openrouter_client as llm
 import prompts
+from longchau_search import search_products
 from safety_gate import is_high_risk, is_injection
 
 PHARMACIST_NAMES = ["Dược sĩ Lan", "Dược sĩ Minh", "Dược sĩ Hương"]
@@ -16,6 +17,16 @@ def _next_pharmacist() -> str:
     name = PHARMACIST_NAMES[_pharmacist_index % len(PHARMACIST_NAMES)]
     _pharmacist_index += 1
     return name
+
+
+
+def _format_product_links(products: list[dict]) -> str:
+    if not products:
+        return ""
+    lines = ["\n\n---\n🛒 **Sản phẩm tại Long Châu:**"]
+    for p in products:
+        lines.append(f"• [{p['name']}]({p['url']}) — {p['price']}")
+    return "\n".join(lines)
 
 
 async def triage(message: str, history: list[dict]) -> dict:
@@ -59,26 +70,47 @@ async def triage(message: str, history: list[dict]) -> dict:
         classification = await llm.chat_json(classify_messages)
         question_type = classification.get("type", "advisory")
         needs_context = classification.get("needs_context", True)
+        drug_keyword = classification.get("drug_keyword") or None
     except Exception:
         # Fail safe: unknown → advisory
         question_type = "advisory"
         needs_context = True
+        drug_keyword = None
 
-    # 3a. Factual → answer immediately
+    # 3a. Factual → answer + product links in parallel (only when a drug keyword exists)
     if question_type == "factual":
-        try:
-            answer_messages = [
-                {"role": "system", "content": prompts.FACTUAL_ANSWER_SYSTEM},
-                *history,
-                {"role": "user", "content": message},
-            ]
-            reply = await llm.chat(answer_messages)
-        except Exception:
-            reply = "Xin lỗi, không thể tải thông tin lúc này. Vui lòng thử lại hoặc hỏi dược sĩ trực tiếp."
+        import asyncio
 
+        answer_messages = [
+            {"role": "system", "content": prompts.FACTUAL_ANSWER_SYSTEM},
+            *history,
+            {"role": "user", "content": message},
+        ]
+
+        if drug_keyword:
+            try:
+                reply, products = await asyncio.gather(
+                    llm.chat(answer_messages),
+                    search_products(drug_keyword, max_results=3),
+                )
+            except Exception:
+                reply = "Xin lỗi, không thể tải thông tin lúc này. Vui lòng thử lại hoặc hỏi dược sĩ trực tiếp."
+                products = []
+        else:
+            try:
+                reply = await llm.chat(answer_messages)
+            except Exception:
+                reply = "Xin lỗi, không thể tải thông tin lúc này. Vui lòng thử lại hoặc hỏi dược sĩ trực tiếp."
+            products = []
+
+        product_md = _format_product_links(products)
         return {
             "route": "factual",
+            # reply_md: for text-based UIs (Streamlit) that render markdown
+            # reply: clean text for widget (uses structured `products` field)
             "reply": reply,
+            "reply_md": reply + product_md,
+            "products": products,
             "handoff_summary": None,
             "safety_gate_triggered": False,
             "model": model_name,
