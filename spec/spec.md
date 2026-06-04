@@ -131,5 +131,5 @@ Long Châu đã có đội ngũ dược sĩ chuyên môn. Mục tiêu của sả
 | Tiền Anh Kiệt | 2A202600961 | Scaffold repo, Docker Compose, demo script, README, UI polish |
 | Vũ Đình Phượng | 2A202600634 | FastAPI backend, Streamlit frontend, Phase 2+3 integration |
 | Nguyễn Văn Phúc | 2A202600539 | Prompts (classifier, answer, handoff), SPEC hoàn thiện |
-| Nguyễn Hoàng Dương | 2A202600849 | Sample questions, evidence, test cases |
+| Nguyễn Hoàng Dương | 2A202600849 | Sample questions, evidence, test cases, Làm slide thuyết trình |
 | Nguyễn Quang Hoà | 2A202600986 | Test failure paths, triage-test-results.md, dry run |
