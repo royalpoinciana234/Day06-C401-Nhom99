@@ -18,20 +18,28 @@ docker compose up --build
 
 ### Cách 2: Chạy native (không cần Docker)
 
-**Backend:**
+**Terminal 1 — Backend:**
 ```bash
 cd codebase/backend
 pip install -r requirements.txt
-cp ../.env.example ../.env  # điền API key
-BACKEND_URL=http://localhost:8000 uvicorn main:app --reload
+cp ../.env.example ../.env   # điền OPENROUTER_API_KEY
+source ../.env               # load env vars
+uvicorn main:app --reload --port 8000
 ```
 
-**Frontend (terminal khác):**
+**Terminal 2 — Streamlit frontend:**
 ```bash
 cd codebase/frontend
 pip install -r requirements.txt
 BACKEND_URL=http://localhost:8000 streamlit run app.py
 ```
+
+**Terminal 3 — Long Châu static shell (port 3000):**
+```bash
+cd codebase/static-shell
+python3 -m http.server 3000
+```
+> Truy cập http://localhost:3000 — widget tự gọi `http://localhost:8000/chat`.
 
 ## Biến môi trường
 
