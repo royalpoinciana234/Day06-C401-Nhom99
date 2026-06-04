@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
-from chat_log import log_conversation
+from chat_log import log_conversation, log_report
 
 load_dotenv()
 
@@ -29,6 +29,13 @@ PHARMACIST_NAMES = ["Dược sĩ Lan", "Dược sĩ Minh", "Dược sĩ Hương"
 class ChatRequest(BaseModel):
     message: str
     history: list[dict] = []
+
+
+class ReportRequest(BaseModel):
+    user_message: str
+    bot_reply: str
+    route: str = ""
+    model: str = ""
 
 
 def stub_route(message: str) -> dict:
@@ -71,6 +78,12 @@ def stub_route(message: str) -> dict:
 
 @app.get("/health")
 def health():
+    return {"status": "ok"}
+
+
+@app.post("/report")
+async def report(req: ReportRequest):
+    log_report(req.user_message, req.bot_reply, req.route, req.model)
     return {"status": "ok"}
 
 

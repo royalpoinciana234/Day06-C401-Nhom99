@@ -7,3 +7,4 @@ venv/
 .DS_Store
 backend/handoff-log.jsonl
 backend/conversation-log.jsonl
+backend/report-log.jsonl

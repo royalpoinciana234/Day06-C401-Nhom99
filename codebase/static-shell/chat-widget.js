@@ -167,6 +167,15 @@
       }
       .lc-chat-send:hover { background: #0085D2; transform: scale(1.05); }
       .lc-chat-send:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+
+      .lc-report-btn {
+        background: none; border: none; cursor: pointer;
+        font-size: 13px; color: #ddd; padding: 2px 4px;
+        margin-top: 2px; border-radius: 4px; line-height: 1;
+        transition: color 0.2s; align-self: flex-start;
+      }
+      .lc-report-btn:hover:not(:disabled) { color: #e05; }
+      .lc-report-btn:disabled { cursor: default; color: #5a9e4f; font-size: 11px; }
     `;
     const style = document.createElement('style');
     style.textContent = css;
@@ -233,7 +242,7 @@
     return `<div class="lc-product-links-title">🛒 Sản phẩm tại Long Châu</div><div class="lc-product-links">${items}</div>`;
   }
 
-  function renderMessage(data) {
+  function renderMessage(data, userMsg) {
     hideTyping();
     const msgs = document.getElementById('lc-chat-messages');
     const wrapper = document.createElement('div');
@@ -241,6 +250,7 @@
 
     const route = data.route || 'factual';
     const reply = data.reply || '';
+    const model = data.model || '';
 
     const avatar = `<div class="lc-msg-avatar"><img src="./assets/avatar.png" alt="AI" /></div>`;
 
@@ -281,6 +291,31 @@
     }
 
     msgs.appendChild(wrapper);
+
+    // Attach 👎 report button to every bot message
+    if (userMsg) {
+      const body = wrapper.querySelector('.lc-msg-body');
+      if (body) {
+        const btn = document.createElement('button');
+        btn.className = 'lc-report-btn';
+        btn.title = 'Báo cáo câu trả lời này';
+        btn.textContent = '👎';
+        const ts = body.querySelector('.lc-ts');
+        if (ts) body.insertBefore(btn, ts);
+        else body.appendChild(btn);
+
+        btn.addEventListener('click', () => {
+          btn.disabled = true;
+          btn.textContent = '✓';
+          fetch(BACKEND_URL + '/report', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_message: userMsg, bot_reply: reply, route, model }),
+          }).catch(() => {});
+        });
+      }
+    }
+
     scrollToBottom();
   }
 
@@ -336,7 +371,7 @@
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       history.push({ role: 'assistant', content: data.reply });
-      renderMessage(data);
+      renderMessage(data, message);
     } catch (err) {
       history.pop(); // revert user message from history on error
       renderError('Không thể kết nối. Vui lòng thử lại sau.');

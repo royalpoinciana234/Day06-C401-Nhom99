@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 _DIR = os.path.dirname(__file__)
 _CONV_LOG = os.path.join(_DIR, "conversation-log.jsonl")
 _HANDOFF_LOG = os.path.join(_DIR, "handoff-log.jsonl")
+_REPORT_LOG = os.path.join(_DIR, "report-log.jsonl")
 
 
 def _append(path: str, entry: dict) -> None:
@@ -43,4 +44,15 @@ def log_handoff(message: str, history: list[dict], summary: str, pharmacist: str
         "summary": summary,
         "last_message": message[:500],
         "history_len": len(history),
+    })
+
+
+def log_report(user_message: str, bot_reply: str, route: str, model: str) -> None:
+    """Log user-flagged bot replies."""
+    _append(_REPORT_LOG, {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "route": route,
+        "model": model,
+        "user_message": user_message[:500],
+        "bot_reply": bot_reply[:500],
     })
