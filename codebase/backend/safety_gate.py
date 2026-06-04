@@ -1,8 +1,10 @@
 """
 Safety gate runs BEFORE the AI classifier.
-A keyword hit forces route=advisory regardless of what the LLM would decide.
-Rationale: a mis-classified advisory question is the most dangerous failure mode
-(patient receives confident but wrong drug-interaction advice with no human review).
+Two checks:
+1. is_high_risk()     — medical risk keywords → force advisory route
+2. is_injection()     — off-topic instructions embedded in message → block and warn
+Rationale: prompt injection can hijack the LLM into executing arbitrary tasks;
+off-topic instructions must be rejected before any LLM call.
 """
 
 HIGH_RISK_KEYWORDS = [
@@ -22,7 +24,30 @@ HIGH_RISK_KEYWORDS = [
     "bệnh mãn tính", "bệnh nền",
 ]
 
+# Patterns that signal off-topic instructions injected into the message.
+INJECTION_PATTERNS = [
+    # Code generation requests
+    "viết code", "write code", "viết python", "write python",
+    "viết script", "tạo code", "generate code", "lập trình",
+    # Role / persona hijack
+    "bạn là", "you are", "pretend", "act as", "đóng vai",
+    "ignore previous", "bỏ qua hướng dẫn", "quên hướng dẫn",
+    "forget your instructions", "new instructions",
+    # Prompt leak attempts
+    "system prompt", "show prompt", "repeat your instructions",
+    "lặp lại prompt", "in ra prompt",
+    # Translation / summarise unrelated content
+    "dịch đoạn", "tóm tắt đoạn", "summarize the following",
+    # General off-topic task injection
+    "hãy làm", "hãy thực hiện", "execute the following",
+]
+
 
 def is_high_risk(message: str) -> bool:
     msg_lower = message.lower()
     return any(kw in msg_lower for kw in HIGH_RISK_KEYWORDS)
+
+
+def is_injection(message: str) -> bool:
+    msg_lower = message.lower()
+    return any(pattern in msg_lower for pattern in INJECTION_PATTERNS)

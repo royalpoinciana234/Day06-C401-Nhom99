@@ -1,8 +1,13 @@
 import os
+from datetime import datetime
+from pathlib import Path
 import httpx
 import streamlit as st
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+
+AVATAR_PATH = Path(__file__).parent / "avatar.png"
+ASSISTANT_AVATAR = str(AVATAR_PATH) if AVATAR_PATH.exists() else "👩‍⚕️"
 
 st.set_page_config(page_title="Long Châu AI Triage", page_icon="💊", layout="centered")
 
@@ -40,7 +45,8 @@ if "messages" not in st.session_state:
 st.title("💬 Tư vấn thuốc Long Châu")
 
 for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
+    avatar = ASSISTANT_AVATAR if msg["role"] == "assistant" else None
+    with st.chat_message(msg["role"], avatar=avatar):
         st.markdown(msg["content"])
         meta = msg.get("meta", {})
 
@@ -54,23 +60,24 @@ for msg in st.session_state.messages:
         if meta.get("route") == "factual":
             st.caption("ℹ️ Thông tin chung — không thay thế tư vấn chuyên sâu")
 
-        model = meta.get("model")
-        if model:
-            st.caption(f"_Model: {model}_")
+        if msg.get("time"):
+            st.caption(msg["time"])
 
 # ---------- Chat input ----------
 prompt = st.chat_input("Nhập câu hỏi về thuốc...")
 
 if prompt:
     # Render user message immediately
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    now = datetime.now().strftime("%H:%M")
+    st.session_state.messages.append({"role": "user", "content": prompt, "time": now})
     st.session_state.history.append({"role": "user", "content": prompt})
 
     with st.chat_message("user"):
         st.markdown(prompt)
+        st.caption(now)
 
     # Call backend
-    with st.chat_message("assistant"):
+    with st.chat_message("assistant", avatar=ASSISTANT_AVATAR):
         with st.spinner("Đang xử lý..."):
             try:
                 resp = httpx.post(
@@ -99,13 +106,13 @@ if prompt:
                 if route == "factual":
                     st.caption("ℹ️ Thông tin chung — không thay thế tư vấn chuyên sâu")
 
-                if model:
-                    st.caption(f"_Model: {model}_")
-
                 # Save to session
+                reply_time = datetime.now().strftime("%H:%M")
+                st.caption(reply_time)
                 st.session_state.messages.append({
                     "role": "assistant",
                     "content": reply,
+                    "time": reply_time,
                     "meta": {
                         "route": route,
                         "handoff_summary": handoff_summary,

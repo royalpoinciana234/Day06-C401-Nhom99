@@ -1,11 +1,11 @@
 """
 AI triage orchestrator. Called by main.py /chat endpoint.
-Flow: safety_gate → classify → factual_answer | advisory_gather | advisory_handoff
+Flow: injection_check → safety_gate → classify → factual_answer | advisory_gather | advisory_handoff
 """
 
 import openrouter_client as llm
 import prompts
-from safety_gate import is_high_risk
+from safety_gate import is_high_risk, is_injection
 
 PHARMACIST_NAMES = ["Dược sĩ Lan", "Dược sĩ Minh", "Dược sĩ Hương"]
 _pharmacist_index = 0
@@ -20,6 +20,13 @@ def _next_pharmacist() -> str:
 
 async def triage(message: str, history: list[dict]) -> dict:
     model_name = llm.get_model_name()
+
+    # 0. Injection detected: don't block — let LLM handle via _ANTI_INJECTION in system prompts.
+    # The system prompt already instructs the model to ignore off-topic parts and only answer
+    # the pharmacy-relevant portion. Blocking here would also reject legitimate drug questions
+    # that happen to contain injection patterns (e.g. "bromhexin info AND write python code").
+    injection_detected = is_injection(message)
+    _ = injection_detected  # reserved for future logging/metrics
 
     # 1. Safety gate — always runs first, overrides classifier
     if is_high_risk(message):
