@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from chat_log import log_conversation
 
 load_dotenv()
 
@@ -76,22 +77,23 @@ def health():
 @app.post("/chat")
 async def chat(req: ChatRequest):
     try:
-        # Phase 3 will import and call triage() here
-        # For now, use the stub heuristic
         try:
             from triage import triage
-            return await triage(req.message, req.history)
+            result = await triage(req.message, req.history)
         except ImportError:
-            pass
+            result = stub_route(req.message)
 
-        return stub_route(req.message)
+        log_conversation(req.message, req.history, result)
+        return result
 
     except Exception as exc:
         # Graceful fallback: never return 500 to the UI
-        return {
+        result = {
             "route": "advisory_handoff",
-            "reply": f"Xin lỗi, hệ thống đang gặp sự cố. Đang chuyển cho dược sĩ hỗ trợ bạn.",
+            "reply": "Xin lỗi, hệ thống đang gặp sự cố. Đang chuyển cho dược sĩ hỗ trợ bạn.",
             "handoff_summary": f"Lỗi hệ thống: {str(exc)[:100]}. Khách cần được tư vấn trực tiếp.",
             "safety_gate_triggered": False,
             "model": "fallback",
         }
+        log_conversation(req.message, req.history, result)
+        return result

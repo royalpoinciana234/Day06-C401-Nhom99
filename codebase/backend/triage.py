@@ -5,7 +5,7 @@ Flow: injection_check → safety_gate → classify → factual_answer | advisory
 
 import openrouter_client as llm
 import prompts
-from handoff_log import log_handoff
+from chat_log import log_handoff
 from longchau_search import search_products
 from safety_gate import is_high_risk, is_injection
 
